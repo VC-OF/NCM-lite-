@@ -3,7 +3,7 @@ Hierarchical code generation and decoding for NCM-Lite.
 Follows Algorithm 2 from Kumbong et al., 2024 ("Next-Concept Modeling").
 """
 
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 import torch
 import torch.nn.functional as F
 
@@ -82,6 +82,33 @@ def _sample_from_logits(
 
 
 @torch.no_grad()
+def decode_latent_to_text(
+    tokenizer: TokenizerModel,
+    z_hat: torch.Tensor
+) -> List[str]:
+    """
+    Decodes a continuous cumulative latent tensor z_hat of shape [B, L, D]
+    directly into UTF-8 text strings via the multiscale decoder.
+    
+    Args:
+        tokenizer: Frozen TokenizerModel containing the decoder.
+        z_hat: [B, L, embed_dim] continuous latent tensor.
+    Returns:
+        decoded_strings: List of length B of decoded text strings.
+    """
+    tokenizer.eval()
+    token_logits = tokenizer.decoder(z_hat)  # [B, L, vocab_size=256]
+    pred_bytes = torch.argmax(token_logits, dim=-1).cpu().numpy()  # [B, L]
+
+    decoded_strings: List[str] = []
+    for row in pred_bytes:
+        raw_bytes = bytes(row.tolist())
+        text = raw_bytes.decode("utf-8", errors="replace")
+        decoded_strings.append(text)
+    return decoded_strings
+
+
+@torch.no_grad()
 def generate_hierarchical_codes(
     generator: NextConceptTransformer,
     tokenizer: TokenizerModel,
@@ -154,6 +181,83 @@ def generate_hierarchical_codes(
         prev_u_inputs.append(u_k)
 
     return generated_codes
+
+
+@torch.no_grad()
+def generate_hierarchical_progression(
+    generator: NextConceptTransformer,
+    tokenizer: TokenizerModel,
+    batch_size: int = 1,
+    temperature: float = 1.0,
+    top_k: int = 0,
+    top_p: float = 1.0,
+    device: Optional[Union[str, torch.device]] = None
+) -> Tuple[List[torch.Tensor], List[torch.Tensor], List[List[str]]]:
+    """
+    Generates hierarchical discrete concept codes in K sequential passes (Algorithm 2)
+    and captures the progressive cumulative continuous reconstruction z_hat^(k) and
+    decoded text representation at each level k in {1, ..., K}.
+    
+    Demonstrates the coarse-to-fine sharpening dynamics of Next-Concept Modeling.
+    
+    Returns:
+        generated_codes: List of K tensors [r_1, ..., r_K].
+        intermediate_latents: List of K tensors [z_hat^(1), ..., z_hat^(K)], each [B, L, D].
+        intermediate_texts: List of K lists of strings, where intermediate_texts[k] has length B.
+    """
+    generator.eval()
+    tokenizer.eval()
+
+    if device is None:
+        device = next(generator.parameters()).device
+
+    L = tokenizer.vq.target_len
+    num_levels = generator.num_levels
+    embed_dim = tokenizer.vq.embed_dim
+
+    z_hat = torch.zeros(batch_size, L, embed_dim, device=device)
+
+    generated_codes: List[torch.Tensor] = []
+    intermediate_latents: List[torch.Tensor] = []
+    intermediate_texts: List[List[str]] = []
+    prev_u_inputs: List[torch.Tensor] = []
+
+    for k in range(num_levels):
+        ell_k = generator.levels[k]
+
+        # 1. Downsample current cumulative reconstruction to resolution ell_k
+        u_k = tokenizer.vq._down_to_level(z_hat, ell_k)
+
+        # 2. Predict level k logits conditioned on earlier levels
+        logits_k = generator.predict_single_level(
+            u_k=u_k,
+            level_idx=k,
+            all_prev_u=prev_u_inputs
+        )
+
+        # 3. Sample discrete codes
+        r_k = _sample_from_logits(
+            logits_k,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p
+        )
+        generated_codes.append(r_k)
+
+        # 4. Accumulate into continuous representation
+        q_k = tokenizer.vq.embeddings[k](r_k)
+        r_full = tokenizer.vq._up_to_full(q_k, L)
+        z_hat = z_hat + r_full
+
+        # Capture cumulative continuous latent and decode text at this scale
+        cumulative_snapshot = z_hat.clone()
+        intermediate_latents.append(cumulative_snapshot)
+        text_snapshot = decode_latent_to_text(tokenizer, cumulative_snapshot)
+        intermediate_texts.append(text_snapshot)
+
+        prev_u_inputs.append(u_k)
+
+    return generated_codes, intermediate_latents, intermediate_texts
 
 
 @torch.no_grad()

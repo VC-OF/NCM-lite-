@@ -133,3 +133,38 @@ def test_sampling_modes():
     uniform_logits = torch.ones(B, L, V)
     sample_out = _sample_from_logits(uniform_logits, temperature=1.0, top_k=5, top_p=0.9)
     assert (sample_out >= 0).all() and (sample_out < V).all()
+
+
+def test_generate_hierarchical_progression(test_models):
+    """
+    Verifies that generate_hierarchical_progression emits progressive continuous
+    latents and text snapshots across all K=3 levels.
+    """
+    from ncm.inference.generate import generate_hierarchical_progression, decode_latent_to_text
+
+    tokenizer, generator = test_models
+    batch_size = 2
+
+    codes, latents, texts = generate_hierarchical_progression(
+        generator=generator,
+        tokenizer=tokenizer,
+        batch_size=batch_size,
+        temperature=0.8,
+        top_k=20,
+    )
+
+    # Must contain K=3 levels of progression
+    assert len(codes) == 3
+    assert len(latents) == 3
+    assert len(texts) == 3
+
+    # Shape checks
+    for k in range(3):
+        assert latents[k].shape == (batch_size, 256, 64)
+        assert len(texts[k]) == batch_size
+        for s in texts[k]:
+            assert isinstance(s, str)
+
+    # Decoding latent directly works
+    direct_decoded = decode_latent_to_text(tokenizer, latents[-1])
+    assert len(direct_decoded) == batch_size
