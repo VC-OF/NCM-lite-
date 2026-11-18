@@ -289,3 +289,100 @@ def decode_hierarchical_codes(
         decoded_strings.append(text)
 
     return decoded_strings
+
+
+
+@torch.no_grad()
+def generate_prompt_continuation(
+    generator: NextConceptTransformer,
+    tokenizer: TokenizerModel,
+    prompt: str,
+    batch_size: int = 1,
+    temperature: float = 0.8,
+    top_k: int = 40,
+    top_p: float = 0.92,
+    device: Optional[Union[str, torch.device]] = None
+) -> List[str]:
+    """
+    Generates text continuations conditioned on a user-provided prompt prefix.
+    
+    Encodes the prompt prefix through the frozen tokenizer into multi-scale
+    prompt codes, fixes the prompt prefix across all K levels, and generates
+    the remaining tokens in K parallel passes.
+    
+    Args:
+        generator: NextConceptTransformer generator.
+        tokenizer: Frozen TokenizerModel.
+        prompt: Prefix text string to continue.
+        batch_size: Number of parallel continuations.
+        temperature: Sampling temperature.
+        top_k: Top-k filtering cutoff.
+        top_p: Top-p nucleus filtering cutoff.
+        device: Target execution device.
+    Returns:
+        continued_texts: List of length B of completed text strings.
+    """
+    generator.eval()
+    tokenizer.eval()
+
+    if device is None:
+        device = next(generator.parameters()).device
+
+    L = tokenizer.vq.target_len
+    num_levels = generator.num_levels
+    embed_dim = tokenizer.vq.embed_dim
+
+    # 1. Prepare prompt byte tensor
+    prompt_bytes = list(prompt.encode("utf-8", errors="replace"))
+    P = len(prompt_bytes)
+    if P >= L:
+        # If prompt is as long as L, truncate so there is at least room to continue
+        P = L - 16
+        prompt_bytes = prompt_bytes[:P]
+
+    padded_prompt = prompt_bytes + [0] * (L - P)
+    x_prompt = torch.tensor([padded_prompt] * batch_size, dtype=torch.long, device=device)
+
+    # 2. Extract multi-scale prompt codes using frozen tokenizer
+    prompt_codes = tokenizer.encode(x_prompt)  # List of K tensors [B, ell_k]
+
+    # 3. Progressive K-pass generation with prefix clamping
+    z_hat = torch.zeros(batch_size, L, embed_dim, device=device)
+    generated_codes: List[torch.Tensor] = []
+    prev_u_inputs: List[torch.Tensor] = []
+
+    for k in range(num_levels):
+        ell_k = generator.levels[k]
+
+        # Calculate prefix length at resolution ell_k
+        P_k = max(1, min(ell_k - 1, round(P * (ell_k / L))))
+
+        u_k = tokenizer.vq._down_to_level(z_hat, ell_k)
+
+        logits_k = generator.predict_single_level(
+            u_k=u_k,
+            level_idx=k,
+            all_prev_u=prev_u_inputs
+        )
+
+        r_k_pred = _sample_from_logits(
+            logits_k,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p
+        )
+
+        # Clamp the prefix positions to the ground-truth prompt codes
+        r_k = torch.cat([prompt_codes[k][:, :P_k], r_k_pred[:, P_k:]], dim=1)
+        generated_codes.append(r_k)
+
+        # Update cumulative continuous representation
+        q_k = tokenizer.vq.embeddings[k](r_k)
+        r_full = tokenizer.vq._up_to_full(q_k, L)
+        z_hat = z_hat + r_full
+
+        prev_u_inputs.append(u_k)
+
+    # 4. Decode full generated codes
+    completed_texts = decode_hierarchical_codes(tokenizer, generated_codes)
+    return completed_texts

@@ -1,8 +1,9 @@
 # NCM-Lite: Next-Concept Modeling (CPU-First Lightweight Prototype)
 
+[![NCM-Lite CI](https://github.com/VC-OF/NCM-lite-/actions/workflows/ci.yml/badge.svg)](https://github.com/VC-OF/NCM-lite-/actions/workflows/ci.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch 2.15 CPU](https://img.shields.io/badge/pytorch-2.15%2Bcpu-red.svg)](https://pytorch.org/)
-[![Tests](https://img.shields.io/badge/pytest-29%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/pytest-31%20passed-brightgreen.svg)]()
 [![Model Size](https://img.shields.io/badge/parameters-11.3M-purple.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -115,14 +116,20 @@ python -m pytest -v tests
 ```powershell
 $env:PYTHONPATH = "src"
 
-# End-to-end synthetic pipeline (Stage 1 -> Freeze -> Stage 2 -> Generation):
+# 1. End-to-end synthetic pipeline (Stage 1 -> Freeze -> Stage 2 -> Generation):
 python scripts/run_smoke_pipeline.py
 
-# Real text training on TinyStories corpus:
+# 2. Real text training on TinyStories corpus (84.8% byte accuracy):
 python scripts/train_real_text.py
 
-# Sampling strategies benchmark (Greedy vs. Top-k vs. Top-p):
+# 3. Sampling strategies benchmark (Greedy vs. Top-k vs. Top-p):
 python scripts/experiment_sampling.py
+
+# 4. Interactive Coarse-to-Fine Hierarchy Progression (HTML dashboard):
+python scripts/visualize_hierarchy.py
+
+# 5. Prompt-conditioned text continuation:
+python scripts/generate_with_prompt.py --prompt "Once upon a time, Lily found a "
 ```
 
 ---

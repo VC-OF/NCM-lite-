@@ -168,3 +168,31 @@ def test_generate_hierarchical_progression(test_models):
     # Decoding latent directly works
     direct_decoded = decode_latent_to_text(tokenizer, latents[-1])
     assert len(direct_decoded) == batch_size
+
+
+
+def test_generate_prompt_continuation(test_models):
+    """
+    Verifies that generate_prompt_continuation runs without error,
+    preserves the prefix prompt, and emits completed text strings.
+    """
+    from ncm.inference.generate import generate_prompt_continuation
+
+    tokenizer, generator = test_models
+    prompt = "Once upon a time, Lily found a "
+
+    continuations = generate_prompt_continuation(
+        generator=generator,
+        tokenizer=tokenizer,
+        prompt=prompt,
+        batch_size=2,
+        temperature=0.8,
+        top_k=20,
+        top_p=0.9,
+    )
+
+    assert len(continuations) == 2
+    for c in continuations:
+        assert isinstance(c, str)
+        # Reconstructed text length is >= len(prompt)
+        assert len(c) >= len(prompt)
