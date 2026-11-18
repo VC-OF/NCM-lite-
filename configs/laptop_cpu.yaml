@@ -44,9 +44,10 @@ generator:
   # 10–15M parameters is an upper target, not a guarantee of fitting in RAM.
   target_parameter_count: 12000000
   fallback_parameter_count: 3000000
-  hidden_dim: 256
-  num_layers: 4
-  num_heads: 4
+  hidden_dim: 384
+  num_layers: 6
+  num_heads: 6
+  intermediate_dim: 1536
   dropout: 0.1
   max_sequence_length: 256
 

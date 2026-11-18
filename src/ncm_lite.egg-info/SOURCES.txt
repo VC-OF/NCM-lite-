@@ -13,3 +13,4 @@ src/ncm_lite.egg-info/SOURCES.txt
 src/ncm_lite.egg-info/dependency_links.txt
 src/ncm_lite.egg-info/requires.txt
 src/ncm_lite.egg-info/top_level.txt
+tests/test_smoke.py
