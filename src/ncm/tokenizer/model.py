@@ -129,6 +129,19 @@ class TokenizerModel(nn.Module):
         nested_drop_prob: float = 0.5
     ):
         super().__init__()
+        # Allow passing config dictionary as single positional or keyword argument
+        if isinstance(vocab_size, dict):
+            cfg = vocab_size
+            vocab_size = cfg.get("vocab_size", 256)
+            embed_dim = cfg.get("embed_dim", 64)
+            max_seq_len = cfg.get("max_seq_len", cfg.get("target_len", 256))
+            num_levels = cfg.get("num_levels", 3)
+            levels = cfg.get("levels", [64, 128, 256])
+            codebook_size = cfg.get("codebook_size", 256)
+            commitment_cost = cfg.get("commitment_cost", cfg.get("beta", 0.25))
+            decay = cfg.get("decay", 0.95)
+            nested_drop_prob = cfg.get("nested_drop_prob", cfg.get("dropout_p", 0.5))
+
         self.vocab_size = vocab_size
         self.embed_dim = embed_dim
         self.max_seq_len = max_seq_len

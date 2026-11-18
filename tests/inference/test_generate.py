@@ -4,7 +4,11 @@ from unittest.mock import MagicMock
 
 from ncm.tokenizer.model import TokenizerModel
 from ncm.models.next_concept import NextConceptTransformer
-from ncm.inference.generate import generate_hierarchical_codes, decode_hierarchical_codes
+from ncm.inference.generate import (
+    generate_hierarchical_codes,
+    decode_hierarchical_codes,
+    _sample_from_logits,
+)
 
 
 @pytest.fixture
@@ -101,3 +105,31 @@ def test_generation_greedy_determinism(test_models):
 
     for c1, c2 in zip(codes_1, codes_2):
         assert torch.equal(c1, c2)
+
+
+def test_sampling_modes():
+    """
+    Verifies greedy, temperature, top-k, and top-p sampling mechanics.
+    """
+    torch.manual_seed(42)
+    B, L, V = 2, 4, 10
+    logits = torch.randn(B, L, V)
+    # Ensure one token dominates
+    logits[..., 0] = 50.0
+
+    # Greedy should always pick index 0
+    greedy_out = _sample_from_logits(logits, temperature=0.0)
+    assert (greedy_out == 0).all()
+
+    # Top-k with k=1 should equal greedy
+    top1_out = _sample_from_logits(logits, temperature=1.0, top_k=1)
+    assert (top1_out == 0).all()
+
+    # Top-p with low p should also isolate the dominant token
+    topp_out = _sample_from_logits(logits, temperature=1.0, top_p=0.8)
+    assert (topp_out == 0).all()
+
+    # Uniform logits with sampling generates valid range
+    uniform_logits = torch.ones(B, L, V)
+    sample_out = _sample_from_logits(uniform_logits, temperature=1.0, top_k=5, top_p=0.9)
+    assert (sample_out >= 0).all() and (sample_out < V).all()

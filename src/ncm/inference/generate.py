@@ -14,31 +14,68 @@ from ncm.tokenizer.model import TokenizerModel
 def _sample_from_logits(
     logits: torch.Tensor,
     temperature: float = 1.0,
-    top_k: int = 0
+    top_k: int = 0,
+    top_p: float = 1.0
 ) -> torch.Tensor:
     """
     Samples discrete token indices from unnormalized logits.
+    
+    Supports:
+      - Greedy argmax (temperature <= 1e-5 or top_k == 1)
+      - Temperature scaling
+      - Top-k filtering (truncating to top k logits)
+      - Top-p / nucleus filtering (truncating to smallest set with cumulative prob >= p)
+      - Combined top-k and top-p sampling
     
     Args:
         logits: [B, L, V] unnormalized logit tensor.
         temperature: Temperature for sampling (0.0 or <= 1e-5 for greedy argmax).
         top_k: If > 0, restrict sampling to top k highest-probability tokens.
+        top_p: If < 1.0, restrict sampling to cumulative probability mass <= top_p.
     Returns:
         indices: [B, L] discrete indices as torch.int64.
     """
     if temperature <= 1e-5 or top_k == 1:
         return torch.argmax(logits, dim=-1)
 
-    logits = logits / temperature
+    # 1. Apply temperature scaling
+    scaled_logits = logits / max(temperature, 1e-5)
 
-    if top_k > 1 and top_k < logits.shape[-1]:
-        val, _ = torch.topk(logits, top_k, dim=-1)
-        min_val = val[..., -1, None]
-        logits = torch.where(logits < min_val, torch.full_like(logits, float("-inf")), logits)
+    # 2. Top-k filtering
+    if 0 < top_k < scaled_logits.shape[-1]:
+        top_k_val, _ = torch.topk(scaled_logits, top_k, dim=-1)
+        min_val = top_k_val[..., -1, None]
+        scaled_logits = torch.where(
+            scaled_logits < min_val,
+            torch.full_like(scaled_logits, float("-inf")),
+            scaled_logits
+        )
 
-    probs = F.softmax(logits, dim=-1)
+    # 3. Top-p (nucleus) filtering
+    if 0.0 < top_p < 1.0:
+        sorted_logits, sorted_indices = torch.sort(scaled_logits, descending=True, dim=-1)
+        cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+
+        # Remove tokens with cumulative probability above top_p
+        sorted_indices_to_remove = cumulative_probs > top_p
+        # Shift mask right so that the first token exceeding threshold is preserved
+        sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+        sorted_indices_to_remove[..., 0] = False
+
+        # Scatter mask back to original logit positions
+        indices_to_remove = sorted_indices_to_remove.scatter(
+            dim=-1, index=sorted_indices, src=sorted_indices_to_remove
+        )
+        scaled_logits = scaled_logits.masked_fill(indices_to_remove, float("-inf"))
+
+    # 4. Softmax probability distribution
+    probs = F.softmax(scaled_logits, dim=-1)
+
+    # Safeguard against all -inf
+    if torch.isnan(probs).any() or (probs.sum(dim=-1) == 0).any():
+        return torch.argmax(logits, dim=-1)
+
     B, L, V = probs.shape
-    # Flatten across B and L for multinomial sampling
     probs_flat = probs.view(-1, V)
     samples = torch.multinomial(probs_flat, num_samples=1)
     return samples.view(B, L)
@@ -51,6 +88,7 @@ def generate_hierarchical_codes(
     batch_size: int = 1,
     temperature: float = 1.0,
     top_k: int = 0,
+    top_p: float = 1.0,
     device: Optional[Union[str, torch.device]] = None
 ) -> List[torch.Tensor]:
     """
@@ -62,7 +100,8 @@ def generate_hierarchical_codes(
         tokenizer: Frozen TokenizerModel containing multiscale RVQ codebooks.
         batch_size: Number of parallel sequences to generate.
         temperature: Sampling temperature (1.0 = standard, 0.0 = greedy).
-        top_k: Top-k filtering threshold.
+        top_k: Top-k filtering threshold (0 = disabled).
+        top_p: Top-p nucleus filtering threshold (1.0 = disabled).
         device: Target execution device.
     Returns:
         generated_codes: List of K tensors [r_1, ..., r_K], where r_k has shape [B, ell_k].
@@ -98,7 +137,12 @@ def generate_hierarchical_codes(
         )  # [B, ell_k, codebook_size]
 
         # 3. Sample discrete codes for all ell_k positions simultaneously
-        r_k = _sample_from_logits(logits_k, temperature=temperature, top_k=top_k)  # [B, ell_k]
+        r_k = _sample_from_logits(
+            logits_k,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p
+        )  # [B, ell_k]
         generated_codes.append(r_k)
 
         # 4. Update cumulative reconstruction z_hat with new code vectors
@@ -128,7 +172,6 @@ def decode_hierarchical_codes(
         decoded_strings: List of length B containing decoded UTF-8 strings.
     """
     tokenizer.eval()
-    device = generated_codes[0].device
 
     # Reconstruct token logits from code indices
     token_logits = tokenizer.decode(generated_codes)  # [B, L, vocab_size=256]

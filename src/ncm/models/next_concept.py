@@ -128,6 +128,20 @@ class NextConceptTransformer(nn.Module):
         loss_alpha: float = 0.0
     ):
         super().__init__()
+        # Allow passing config dictionary as single positional or keyword argument
+        if isinstance(num_levels, dict):
+            cfg = num_levels
+            num_levels = cfg.get("num_levels", 3)
+            levels = cfg.get("levels", [64, 128, 256])
+            codebook_size = cfg.get("codebook_size", 256)
+            latent_dim = cfg.get("latent_dim", cfg.get("code_dim", 64))
+            embed_dim = cfg.get("embed_dim", cfg.get("hidden_dim", 384))
+            num_layers = cfg.get("num_layers", 6)
+            num_heads = cfg.get("num_heads", 6)
+            intermediate_dim = cfg.get("intermediate_dim", 1536)
+            dropout = cfg.get("dropout", 0.1)
+            loss_alpha = cfg.get("loss_alpha", 0.0)
+
         self.num_levels = num_levels
         self.levels = levels or [64, 128, 256]
         self.total_seq_len = sum(self.levels)

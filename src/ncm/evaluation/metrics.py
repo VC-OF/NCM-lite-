@@ -111,6 +111,7 @@ def evaluate_generation(
     num_samples: int = 5,
     temperature: float = 1.0,
     top_k: int = 0,
+    top_p: float = 1.0,
     device: Optional[Union[str, torch.device]] = None
 ) -> Dict[str, Any]:
     """
@@ -122,6 +123,7 @@ def evaluate_generation(
         num_samples: Number of sequences to generate.
         temperature: Sampling temperature.
         top_k: Top-k filtering threshold.
+        top_p: Top-p nucleus filtering threshold.
         device: Target execution device.
     Returns:
         results: Dictionary containing latency metrics, peak memory, and text samples.
@@ -145,6 +147,7 @@ def evaluate_generation(
         batch_size=num_samples,
         temperature=temperature,
         top_k=top_k,
+        top_p=top_p,
         device=device
     )
 
