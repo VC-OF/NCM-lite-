@@ -73,7 +73,7 @@ def train_on_real_text():
     print(f"  • Stage 2 Generator parameters: {sum(p.numel() for p in generator.parameters()):,}")
 
     # 3. Stage 1 Optimization (RVQ Tokenizer on Real Text)
-    stage1_steps = 40
+    stage1_steps = 60
     print(f"\n[3/5] Stage 1: Training RVQ Tokenizer for {stage1_steps} steps...")
     tok_opt = torch.optim.Adam(tokenizer.parameters(), lr=2e-3)
     tok_trainer = TokenizerTrainer(tokenizer, tok_opt, device=device)
@@ -101,10 +101,16 @@ def train_on_real_text():
     print(f"  • Codebook Utilization:    {recon_eval['mean_codebook_utilization'] * 100:.2f}%")
 
     # 4. Stage 2 Optimization (Generator with strictly frozen Tokenizer)
-    stage2_steps = 40
-    print(f"\n[4/5] Stage 2: Training Next-Concept Transformer for {stage2_steps} steps...")
+    stage2_steps = 60
+    print(f"\n[4/5] Stage 2: Training Next-Concept Transformer for {stage2_steps} steps (corruption_rate=0.15)...")
     gen_opt = torch.optim.AdamW(generator.parameters(), lr=5e-4, weight_decay=0.01)
-    gen_trainer = GeneratorTrainer(generator, tokenizer, gen_opt, device=device)
+    gen_trainer = GeneratorTrainer(
+        generator=generator,
+        tokenizer=tokenizer,
+        optimizer=gen_opt,
+        corruption_rate=0.15,
+        device=device
+    )
 
     t0 = time.perf_counter()
     data_iter = iter(dataloader)

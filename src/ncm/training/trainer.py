@@ -81,12 +81,14 @@ class GeneratorTrainer:
         tokenizer: TokenizerModel,
         optimizer: torch.optim.Optimizer,
         max_grad_norm: float = 1.0,
+        corruption_rate: float = 0.0,
         device: str = "cpu"
     ):
         self.generator = generator.to(device)
         self.tokenizer = tokenizer.to(device)
         self.optimizer = optimizer
         self.max_grad_norm = max_grad_norm
+        self.corruption_rate = corruption_rate
         self.device = device
         self.step_count = 0
 
@@ -126,7 +128,15 @@ class GeneratorTrainer:
 
                 # Update cumulative reconstruction for the next level
                 r_k = target_codes[k]
-                q_k = self.tokenizer.vq.embeddings[k](r_k)
+                if self.corruption_rate > 0.0 and self.generator.training:
+                    # Exposure bias mitigation (Section 3.4): perturb conditioning codes
+                    corrupt_mask = torch.rand(r_k.shape, device=r_k.device) < self.corruption_rate
+                    random_codes = torch.randint(0, self.tokenizer.vq.codebook_size, r_k.shape, device=r_k.device)
+                    r_k_cond = torch.where(corrupt_mask, random_codes, r_k)
+                else:
+                    r_k_cond = r_k
+
+                q_k = self.tokenizer.vq.embeddings[k](r_k_cond)
                 r_full = self.tokenizer.vq._up_to_full(q_k, L)
                 z_hat = z_hat + r_full
 
