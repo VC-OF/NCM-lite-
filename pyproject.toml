@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ncm-lite"
+version = "0.1.0"
+description = "A lightweight, CPU-first prototype inspired by Next-Concept Modeling (NCM)"
+authors = [
+    { name = "NCM-Lite Contributors" }
+]
+readme = "README-FIRST.md"
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.2.0",
+    "numpy>=1.26.0",
+    "pyyaml>=6.0.1",
+    "tqdm>=4.66.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

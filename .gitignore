@@ -1,0 +1,41 @@
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python byte code and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Datasets, caches, and artifacts
+datasets/cache/
+datasets/downloads/
+data/raw/
+runs/
+checkpoints/
+*.pt
+*.pth
+*.bin
+*.tar.gz
+
+# Environment & credentials
+.env
+.env.local
+*.pem
+*.key
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

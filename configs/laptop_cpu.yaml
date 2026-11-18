@@ -1,0 +1,85 @@
+# Provisional configuration. Do not treat as validated until a CPU smoke test passes.
+# Values are starting points for the prototype, not claimed Stanford NCM hyperparameters.
+
+project:
+  name: ncm-lite
+  seed: 42
+  device: cpu
+  deterministic: true
+  output_dir: ./runs
+  checkpoint_dir: ./checkpoints
+
+compute:
+  assumed_usable_system_ram_gb: 13.3
+  max_process_ram_gb: 8.0
+  dataloader_workers: 0
+  pin_memory: false
+  mixed_precision: false
+  allow_cuda: false
+  note: >
+    Leave memory headroom for the operating system, IDE, browser, and background
+    applications. Measure actual peak memory before increasing any setting.
+
+data:
+  dataset_name: synthetic_smoke
+  train_path: null
+  validation_path: null
+  text_column: text
+  max_sequence_length: 256
+  streaming: true
+  download_enabled: false
+  cache_dir: ./datasets/cache
+  validation_fraction: 0.02
+
+tokenizer:
+  # Placeholder values; Agent 1 must replace/confirm them from the approved spec.
+  multiscale_levels: 3
+  hidden_dim: 128
+  codebook_size: 256
+  code_dim: 64
+  residual_quantizers_per_level: 1
+  dropout: 0.0
+
+generator:
+  # 10–15M parameters is an upper target, not a guarantee of fitting in RAM.
+  target_parameter_count: 12000000
+  fallback_parameter_count: 3000000
+  hidden_dim: 256
+  num_layers: 4
+  num_heads: 4
+  dropout: 0.1
+  max_sequence_length: 256
+
+training:
+  tokenizer:
+    enabled: false
+    batch_size: 1
+    gradient_accumulation_steps: 1
+    max_steps: 20
+    learning_rate: 0.0001
+    weight_decay: 0.01
+    log_every: 1
+    save_every: 20
+  generator:
+    enabled: false
+    batch_size: 1
+    gradient_accumulation_steps: 1
+    max_steps: 20
+    learning_rate: 0.0001
+    weight_decay: 0.01
+    log_every: 1
+    save_every: 20
+  checkpoint_resume: true
+  gradient_clip_norm: 1.0
+
+generation:
+  max_new_tokens_or_steps: 64
+  temperature: 1.0
+  top_k: 0
+
+evaluation:
+  run_reconstruction: true
+  run_generation_smoke_test: true
+  max_eval_batches: 2
+  report_memory: true
+  report_latency: true

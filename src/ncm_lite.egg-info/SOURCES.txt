@@ -1,0 +1,15 @@
+README-FIRST.md
+pyproject.toml
+src/ncm/__init__.py
+src/ncm/data/__init__.py
+src/ncm/evaluation/__init__.py
+src/ncm/inference/__init__.py
+src/ncm/models/__init__.py
+src/ncm/quantization/__init__.py
+src/ncm/tokenizer/__init__.py
+src/ncm/training/__init__.py
+src/ncm_lite.egg-info/PKG-INFO
+src/ncm_lite.egg-info/SOURCES.txt
+src/ncm_lite.egg-info/dependency_links.txt
+src/ncm_lite.egg-info/requires.txt
+src/ncm_lite.egg-info/top_level.txt

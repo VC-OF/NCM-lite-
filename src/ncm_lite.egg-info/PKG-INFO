@@ -1,0 +1,59 @@
+Metadata-Version: 2.4
+Name: ncm-lite
+Version: 0.1.0
+Summary: A lightweight, CPU-first prototype inspired by Next-Concept Modeling (NCM)
+Author: NCM-Lite Contributors
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: torch>=2.2.0
+Requires-Dist: numpy>=1.26.0
+Requires-Dist: pyyaml>=6.0.1
+Requires-Dist: tqdm>=4.66.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+
+# NCM-Lite — Antigravity Starter Pack
+
+This pack contains the project-governance and agent-task documents for a laptop-first,
+NCM-inspired research implementation.
+
+## Important scope statement
+
+The target is a **small, locally trainable NCM-inspired prototype**, not a reproduction
+of Stanford's full-scale training runs and not a ChatGPT replacement. Preserve the
+paper's central two-stage structure:
+
+1. Train a multiscale residual vector-quantized tokenizer.
+2. Freeze the tokenizer and train a causal next-concept model to predict hierarchical
+   discrete codes, coarse-to-fine.
+
+Do not assume that an ordinary BPE tokenizer plus a standard language-model transformer
+is an NCM implementation.
+
+## Files
+
+- `AGENT_RULES.md` — shared rules for every agent.
+- `docs/agents/00-research-architect.md` — Phase 1 sole agent.
+- `docs/agents/01-tokenizer-rvq.md` — tokenizer implementation agent.
+- `docs/agents/02-next-concept-model.md` — hierarchical predictor agent.
+- `docs/agents/03-training-data.md` — data and training agent.
+- `docs/agents/04-evaluation-integration.md` — integration, inference and evaluation agent.
+- `docs/research/RESEARCH_BRIEF.md` — exact assignment for the research architect.
+- `configs/laptop_cpu.yaml` — conservative starting configuration; revise after a smoke test.
+- `docs/WORKFLOW.md` — suggested Antigravity + Git worktree workflow.
+- `docs/INTERFACES.md` — interface contract template to finalize during Phase 1.
+
+## First steps
+
+1. Verify the paper and official repository from the links in `docs/research/RESEARCH_BRIEF.md`.
+2. Create the repository and copy this pack into it.
+3. Run Phase 1 with only the Research Architect agent.
+4. Review and approve the spec and interface contracts before launching implementation agents.
+5. Tag the approved baseline: `git tag spec-v1`.
+6. Create separate Git worktrees for implementation agents.
+
+Antigravity's product-specific rules/workflow filenames and UI can change. Keep this
+`AGENT_RULES.md` as the canonical, version-controlled source. If Antigravity provides
+workspace rules, point them to this file or copy its content there; do not rely on an
+unverified special filename.
