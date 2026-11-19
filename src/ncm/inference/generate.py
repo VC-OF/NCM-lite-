@@ -395,3 +395,92 @@ def generate_prompt_continuation(
         completed_texts.append(prompt + continuation_text)
 
     return completed_texts
+
+
+@torch.no_grad()
+def generate_chained_sequence(
+    generator: NextConceptTransformer,
+    tokenizer: TokenizerModel,
+    prompt: str = "",
+    target_bytes: int = 512,
+    overlap_bytes: int = 64,
+    temperature: float = 0.8,
+    top_k: int = 40,
+    top_p: float = 0.92,
+    device: Optional[Union[str, torch.device]] = None
+) -> str:
+    """
+    Generates multi-chunk, long-form text sequences using sliding-window
+    autoregressive chaining across sequential 256-byte NCM generation blocks.
+
+    For each 256-byte window, generation runs in exactly K=3 parallel passes.
+    The suffix of each generated chunk serves as the prompt prefix for the
+    subsequent window, enabling seamless multi-paragraph story generation.
+
+    Args:
+        generator: NextConceptTransformer generator model.
+        tokenizer: Frozen TokenizerModel.
+        prompt: Initial opening prompt text.
+        target_bytes: Desired total length in bytes (e.g. 512, 768, 1024).
+        overlap_bytes: Length of context window passed to next chunk (default: 64).
+        temperature: Sampling temperature.
+        top_k: Top-k filtering threshold.
+        top_p: Top-p nucleus filtering threshold.
+        device: Target execution device.
+
+    Returns:
+        full_story: The seamlessly concatenated multi-chunk generated text string.
+    """
+    generator.eval()
+    tokenizer.eval()
+
+    L = tokenizer.vq.target_len  # 256
+    overlap = min(overlap_bytes, L // 2)
+
+    # 1. First chunk generation
+    initial_prompt = prompt if prompt else "Once upon a time, "
+    first_chunk = generate_prompt_continuation(
+        generator=generator,
+        tokenizer=tokenizer,
+        prompt=initial_prompt,
+        batch_size=1,
+        temperature=temperature,
+        top_k=top_k,
+        top_p=top_p,
+        device=device
+    )[0]
+
+    accumulated_text = first_chunk
+    curr_bytes = len(accumulated_text.encode("utf-8", errors="replace"))
+
+    # 2. Sequential sliding-window chaining
+    while curr_bytes < target_bytes:
+        # Extract the trailing context to prime the next chunk
+        raw_accum = accumulated_text.encode("utf-8", errors="replace")
+        prefix_bytes = raw_accum[-overlap:]
+        prefix_text = prefix_bytes.decode("utf-8", errors="ignore")
+
+        # Generate continuation from prefix
+        next_chunk = generate_prompt_continuation(
+            generator=generator,
+            tokenizer=tokenizer,
+            prompt=prefix_text,
+            batch_size=1,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            device=device
+        )[0]
+
+        # Append only the newly generated suffix beyond the overlap prefix
+        new_text = next_chunk[len(prefix_text):]
+        if not new_text:
+            break
+
+        accumulated_text += new_text
+        curr_bytes = len(accumulated_text.encode("utf-8", errors="replace"))
+
+    # Trim to exact target_bytes boundary if specified
+    encoded = accumulated_text.encode("utf-8", errors="replace")[:target_bytes]
+    return encoded.decode("utf-8", errors="ignore")
+

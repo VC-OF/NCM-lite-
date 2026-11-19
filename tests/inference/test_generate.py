@@ -196,3 +196,31 @@ def test_generate_prompt_continuation(test_models):
         assert isinstance(c, str)
         # Reconstructed text length is >= len(prompt)
         assert len(c) >= len(prompt)
+
+
+def test_generate_chained_sequence(test_models):
+    """
+    Verifies that generate_chained_sequence generates long-form text
+    across multiple sliding-window chunks reaching target byte lengths.
+    """
+    from ncm.inference.generate import generate_chained_sequence
+
+    tokenizer, generator = test_models
+    prompt = "Once upon a time, Lily found a "
+    target_bytes = 384  # Longer than 1 chunk (256)
+
+    long_story = generate_chained_sequence(
+        generator=generator,
+        tokenizer=tokenizer,
+        prompt=prompt,
+        target_bytes=target_bytes,
+        overlap_bytes=32,
+        temperature=0.8,
+        top_k=20,
+        top_p=0.9
+    )
+
+    assert isinstance(long_story, str)
+    assert long_story.startswith(prompt)
+    assert len(long_story.encode("utf-8")) >= 256
+

@@ -334,6 +334,15 @@
                     <input type="range" id="topp-slider" min="0.5" max="1.0" step="0.01" value="0.92" oninput="updateVal('topp', this.value)">
                 </div>
 
+                <div class="control-group">
+                    <label><span>Story Length</span><span id="len-val" class="val-badge">256 B</span></label>
+                    <div class="preset-buttons" style="margin-bottom:0;">
+                        <button class="btn-preset" id="len-btn-256" style="border-color: var(--accent); color: var(--accent);" onclick="setLength(256)">256 B</button>
+                        <button class="btn-preset" id="len-btn-512" onclick="setLength(512)">512 B</button>
+                        <button class="btn-preset" id="len-btn-1024" onclick="setLength(1024)">1024 B</button>
+                    </div>
+                </div>
+
                 <button class="btn-generate" id="generate-btn" onclick="generate()">
                     <div class="spinner" id="btn-spinner"></div>
                     <span id="btn-text">Generate Sequence</span>
@@ -444,6 +453,23 @@
             }
         }
 
+        let selectedLength = 256;
+
+        function setLength(len) {
+            selectedLength = len;
+            document.getElementById('len-val').innerText = len + ' B';
+            [256, 512, 1024].forEach(l => {
+                const btn = document.getElementById('len-btn-' + l);
+                if (l === len) {
+                    btn.style.borderColor = 'var(--accent)';
+                    btn.style.color = 'var(--accent)';
+                } else {
+                    btn.style.borderColor = 'var(--border)';
+                    btn.style.color = 'var(--text-muted)';
+                }
+            });
+        }
+
         async function generate() {
             const btn = document.getElementById('generate-btn');
             const spinner = document.getElementById('btn-spinner');
@@ -462,18 +488,19 @@
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt, temperature, top_k, top_p })
+                    body: JSON.stringify({ prompt, temperature, top_k, top_p, target_bytes: selectedLength })
                 });
 
                 const data = await response.json();
 
                 renderOutput('output-level-1', data.level_1_text, prompt);
                 renderOutput('output-level-2', data.level_2_text, prompt);
-                renderOutput('output-level-3', data.level_3_text, prompt);
+                renderOutput('output-level-3', data.final_text, prompt);
 
                 document.getElementById('stats-bar').style.display = 'flex';
                 document.getElementById('stat-latency').innerText = (data.latency_seconds * 1000).toFixed(1) + ' ms';
-                document.getElementById('stat-throughput').innerText = (256 / data.latency_seconds).toFixed(0) + ' bytes/s';
+                const actualB = data.actual_bytes || data.target_bytes || 256;
+                document.getElementById('stat-throughput').innerText = (actualB / data.latency_seconds).toFixed(0) + ' bytes/s';
             } catch (err) {
                 alert('Generation request failed: ' + err);
             } finally {

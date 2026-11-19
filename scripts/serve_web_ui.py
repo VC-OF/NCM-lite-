@@ -76,11 +76,13 @@ class NCMStudioServer:
         prompt: str = "",
         temperature: float = 0.8,
         top_k: int = 40,
-        top_p: float = 0.92
+        top_p: float = 0.92,
+        target_bytes: int = 256
     ) -> dict:
         t0 = time.perf_counter()
 
         prompt = prompt if prompt else ""
+        from ncm.inference.generate import generate_chained_sequence
 
         if not prompt:
             # Unconditional coarse-to-fine progression
@@ -96,6 +98,21 @@ class NCMStudioServer:
             l1_text = texts[0][0]
             l2_text = texts[1][0]
             l3_text = texts[2][0]
+            final_text = l3_text
+
+            if target_bytes > 256:
+                # Chain additional windows
+                final_text = generate_chained_sequence(
+                    generator=self.generator,
+                    tokenizer=self.tokenizer,
+                    prompt=final_text[:64],
+                    target_bytes=target_bytes,
+                    overlap_bytes=64,
+                    temperature=temperature,
+                    top_k=top_k,
+                    top_p=top_p,
+                    device=self.device
+                )
         else:
             # Prompt-conditioned coarse-to-fine progression
             L = self.tokenizer.vq.target_len
@@ -131,17 +148,34 @@ class NCMStudioServer:
             l1_text = progress_texts[0]
             l2_text = progress_texts[1]
             l3_text = progress_texts[2]
+            final_text = l3_text
+
+            if target_bytes > 256:
+                final_text = generate_chained_sequence(
+                    generator=self.generator,
+                    tokenizer=self.tokenizer,
+                    prompt=prompt,
+                    target_bytes=target_bytes,
+                    overlap_bytes=64,
+                    temperature=temperature,
+                    top_k=top_k,
+                    top_p=top_p,
+                    device=self.device
+                )
 
         elapsed = time.perf_counter() - t0
+        total_bytes = len(final_text.encode("utf-8", errors="replace"))
 
         return {
             "prompt": prompt,
+            "target_bytes": target_bytes,
+            "actual_bytes": total_bytes,
             "latency_seconds": elapsed,
-            "throughput_bytes_per_sec": float(self.seq_len / max(1e-6, elapsed)),
+            "throughput_bytes_per_sec": float(total_bytes / max(1e-6, elapsed)),
             "level_1_text": l1_text,
             "level_2_text": l2_text,
             "level_3_text": l3_text,
-            "final_text": l3_text
+            "final_text": final_text
         }
 
 
@@ -182,12 +216,14 @@ def make_request_handler(studio: NCMStudioServer, html_path: str):
                 temperature = float(payload.get("temperature", 0.8))
                 top_k = int(payload.get("top_k", 40))
                 top_p = float(payload.get("top_p", 0.92))
+                target_bytes = int(payload.get("target_bytes", 256))
 
                 result = studio.generate(
                     prompt=prompt,
                     temperature=temperature,
                     top_k=top_k,
-                    top_p=top_p
+                    top_p=top_p,
+                    target_bytes=target_bytes
                 )
 
                 self.send_response(200)
