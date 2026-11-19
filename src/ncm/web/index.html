@@ -345,6 +345,13 @@
                 <div class="prompt-panel">
                     <label style="margin-bottom: 8px;"><strong>Text Prompt Prefix:</strong> (Optional)</label>
                     <textarea id="prompt-input" placeholder="Type a story prompt prefix here (e.g. 'Once upon a time, Lily found a ') or leave blank for unconditional generation..."></textarea>
+                    <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+                        <span style="font-size: 11px; color: var(--text-muted); align-self: center;">Try In-Domain Stories:</span>
+                        <button class="btn-preset" style="padding: 4px 8px;" onclick="setPrompt('Once upon a time, Lily found a ')">Lily's Story</button>
+                        <button class="btn-preset" style="padding: 4px 8px;" onclick="setPrompt('Tim and his dog Spot ran to the ')">Tim & Spot</button>
+                        <button class="btn-preset" style="padding: 4px 8px;" onclick="setPrompt('One sunny morning, the little ')">Sunny Morning</button>
+                        <button class="btn-preset" style="padding: 4px 8px;" onclick="setPrompt('Max the orange cat was sleeping ')">Max the Cat</button>
+                    </div>
                 </div>
 
                 <div class="stats-bar" id="stats-bar" style="display: none;">
@@ -383,6 +390,10 @@
     </div>
 
     <script>
+        function setPrompt(text) {
+            document.getElementById('prompt-input').value = text;
+        }
+
         function updateVal(type, val) {
             document.getElementById(type + '-val').innerText = parseFloat(val).toFixed(type === 'topk' ? 0 : 2);
         }
@@ -411,6 +422,28 @@
             updateVal('topp', topp.value);
         }
 
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function renderOutput(elementId, text, prompt) {
+            const el = document.getElementById(elementId);
+            if (!text) {
+                el.innerText = '(Empty)';
+                return;
+            }
+            const safeText = escapeHtml(text);
+            const p = prompt ? prompt.trim() : '';
+            if (p && safeText.toLowerCase().startsWith(escapeHtml(p).toLowerCase())) {
+                const pLen = p.length;
+                const prefix = safeText.slice(0, pLen);
+                const rest = safeText.slice(pLen);
+                el.innerHTML = `<span style="color: #38bdf8; font-weight: 700; background: rgba(56,189,248,0.12); padding: 2px 6px; border-radius: 4px;">${prefix}</span>${rest}`;
+            } else {
+                el.innerText = text;
+            }
+        }
+
         async function generate() {
             const btn = document.getElementById('generate-btn');
             const spinner = document.getElementById('btn-spinner');
@@ -434,9 +467,9 @@
 
                 const data = await response.json();
 
-                document.getElementById('output-level-1').innerText = data.level_1_text || '(Empty)';
-                document.getElementById('output-level-2').innerText = data.level_2_text || '(Empty)';
-                document.getElementById('output-level-3').innerText = data.level_3_text || '(Empty)';
+                renderOutput('output-level-1', data.level_1_text, prompt);
+                renderOutput('output-level-2', data.level_2_text, prompt);
+                renderOutput('output-level-3', data.level_3_text, prompt);
 
                 document.getElementById('stats-bar').style.display = 'flex';
                 document.getElementById('stat-latency').innerText = (data.latency_seconds * 1000).toFixed(1) + ' ms';

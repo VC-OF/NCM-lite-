@@ -383,6 +383,15 @@ def generate_prompt_continuation(
 
         prev_u_inputs.append(u_k)
 
-    # 4. Decode full generated codes
-    completed_texts = decode_hierarchical_codes(tokenizer, generated_codes)
+    # 4. Decode full generated codes and guarantee exact prompt prefix
+    token_logits = tokenizer.decode(generated_codes)
+    pred_bytes = torch.argmax(token_logits, dim=-1).cpu().numpy()
+
+    completed_texts: List[str] = []
+    for row in pred_bytes:
+        raw_bytes = bytes(row.tolist())
+        continuation_bytes = raw_bytes[P:]
+        continuation_text = continuation_bytes.decode("utf-8", errors="replace")
+        completed_texts.append(prompt + continuation_text)
+
     return completed_texts

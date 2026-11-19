@@ -123,8 +123,9 @@ class NCMStudioServer:
                 z_hat = z_hat + r_full
                 prev_u.append(u_k)
 
-                # Decode progressive snapshot
-                snapshot_text = decode_latent_to_text(self.tokenizer, z_hat)[0]
+                # Decode progressive snapshot with anchored prompt
+                raw_snapshot = decode_latent_to_text(self.tokenizer, z_hat)[0]
+                snapshot_text = prompt + raw_snapshot[P:]
                 progress_texts.append(snapshot_text)
 
             l1_text = progress_texts[0]
