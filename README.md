@@ -3,7 +3,7 @@
 [![NCM-Lite CI](https://github.com/VC-OF/NCM-lite-/actions/workflows/ci.yml/badge.svg)](https://github.com/VC-OF/NCM-lite-/actions/workflows/ci.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch 2.15 CPU](https://img.shields.io/badge/pytorch-2.15%2Bcpu-red.svg)](https://pytorch.org/)
-[![Tests](https://img.shields.io/badge/pytest-31%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/pytest-34%20passed-brightgreen.svg)]()
 [![Model Size](https://img.shields.io/badge/parameters-11.3M-purple.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -130,6 +130,10 @@ python scripts/visualize_hierarchy.py
 
 # 5. Prompt-conditioned text continuation:
 python scripts/generate_with_prompt.py --prompt "Once upon a time, Lily found a "
+
+# 6. Interactive Browser Studio UI (Zero dependencies):
+python scripts/serve_web_ui.py
+# Open http://127.0.0.1:8000 in your browser
 ```
 
 ---

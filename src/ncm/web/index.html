@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NCM-Lite: Next-Concept Modeling Studio</title>
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #131b2e;
+            --bg-tertiary: #1c2742;
+            --accent: #38bdf8;
+            --accent-hover: #0284c7;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #293552;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 30px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1050px;
+            width: 100%;
+        }
+
+        header {
+            margin-bottom: 28px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 20px;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 26px;
+            color: var(--accent);
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .tag {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 820px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .control-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px;
+            height: fit-content;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-main);
+        }
+
+        .control-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .val-badge {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            outline: none;
+            accent-color: var(--accent);
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 18px;
+        }
+
+        .btn-preset {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-preset:hover {
+            color: var(--text-main);
+            border-color: var(--accent);
+        }
+
+        .btn-generate {
+            width: 100%;
+            background: var(--accent);
+            color: #0b0f19;
+            font-weight: 700;
+            font-size: 15px;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-generate:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-generate:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .prompt-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px;
+            margin-bottom: 24px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 80px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-main);
+            padding: 12px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .stat-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 8px 14px;
+            border-radius: 8px;
+        }
+
+        .stat-item strong {
+            color: var(--success);
+        }
+
+        .progression-container {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .level-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .level-box::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+        }
+
+        .level-1::before { background: var(--warning); }
+        .level-2::before { background: var(--accent); }
+        .level-3::before { background: var(--success); }
+
+        .level-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .level-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .level-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+        }
+
+        .level-output {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+            min-height: 50px;
+        }
+
+        .spinner {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-top-color: #0b0f19;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="title-row">
+                <h1>NCM-Lite Interactive Studio</h1>
+                <span class="tag">K=3 Parallel Passes (CPU)</span>
+            </div>
+            <div class="subtitle">Next-Concept Modeling: Coarse-to-Fine Text Generation (Stanford / Together AI)</div>
+        </header>
+
+        <div class="main-layout">
+            <!-- Left: Controls -->
+            <div class="control-panel">
+                <div class="panel-title">Sampling Controls</div>
+
+                <div class="preset-buttons">
+                    <button class="btn-preset" onclick="setPreset('greedy')">Greedy</button>
+                    <button class="btn-preset" onclick="setPreset('coherent')">Coherent</button>
+                    <button class="btn-preset" onclick="setPreset('creative')">Creative</button>
+                </div>
+
+                <div class="control-group">
+                    <label><span>Temperature (T)</span><span id="temp-val" class="val-badge">0.80</span></label>
+                    <input type="range" id="temp-slider" min="0.0" max="1.5" step="0.05" value="0.8" oninput="updateVal('temp', this.value)">
+                </div>
+
+                <div class="control-group">
+                    <label><span>Top-k Cutoff</span><span id="topk-val" class="val-badge">40</span></label>
+                    <input type="range" id="topk-slider" min="0" max="100" step="5" value="40" oninput="updateVal('topk', this.value)">
+                </div>
+
+                <div class="control-group">
+                    <label><span>Top-p (Nucleus)</span><span id="topp-val" class="val-badge">0.92</span></label>
+                    <input type="range" id="topp-slider" min="0.5" max="1.0" step="0.01" value="0.92" oninput="updateVal('topp', this.value)">
+                </div>
+
+                <button class="btn-generate" id="generate-btn" onclick="generate()">
+                    <div class="spinner" id="btn-spinner"></div>
+                    <span id="btn-text">Generate Sequence</span>
+                </button>
+            </div>
+
+            <!-- Right: Prompt & Outputs -->
+            <div>
+                <div class="prompt-panel">
+                    <label style="margin-bottom: 8px;"><strong>Text Prompt Prefix:</strong> (Optional)</label>
+                    <textarea id="prompt-input" placeholder="Type a story prompt prefix here (e.g. 'Once upon a time, Lily found a ') or leave blank for unconditional generation..."></textarea>
+                </div>
+
+                <div class="stats-bar" id="stats-bar" style="display: none;">
+                    <div class="stat-item">Latency: <strong id="stat-latency">--</strong></div>
+                    <div class="stat-item">Throughput: <strong id="stat-throughput">--</strong></div>
+                    <div class="stat-item">Passes: <strong>3 parallel</strong></div>
+                </div>
+
+                <div class="progression-container">
+                    <div class="level-box level-1">
+                        <div class="level-header">
+                            <span class="level-title">Pass 1: Level 1 — Coarse Semantic Sketch</span>
+                            <span class="level-badge">&ell;₁ = 64 tokens</span>
+                        </div>
+                        <div class="level-output" id="output-level-1">Awaiting generation...</div>
+                    </div>
+
+                    <div class="level-box level-2">
+                        <div class="level-header">
+                            <span class="level-title">Pass 2: Level 2 — Intermediate Syntactic Refinement</span>
+                            <span class="level-badge">&ell;₂ = 128 tokens</span>
+                        </div>
+                        <div class="level-output" id="output-level-2">Awaiting generation...</div>
+                    </div>
+
+                    <div class="level-box level-3">
+                        <div class="level-header">
+                            <span class="level-title">Pass 3: Level 3 — Fine Byte-Level Completion</span>
+                            <span class="level-badge">&ell;₃ = 256 tokens</span>
+                        </div>
+                        <div class="level-output" id="output-level-3">Awaiting generation...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateVal(type, val) {
+            document.getElementById(type + '-val').innerText = parseFloat(val).toFixed(type === 'topk' ? 0 : 2);
+        }
+
+        function setPreset(preset) {
+            const temp = document.getElementById('temp-slider');
+            const topk = document.getElementById('topk-slider');
+            const topp = document.getElementById('topp-slider');
+
+            if (preset === 'greedy') {
+                temp.value = 0.0;
+                topk.value = 0;
+                topp.value = 1.0;
+            } else if (preset === 'coherent') {
+                temp.value = 0.8;
+                topk.value = 40;
+                topp.value = 0.92;
+            } else if (preset === 'creative') {
+                temp.value = 1.2;
+                topk.value = 0;
+                topp.value = 0.95;
+            }
+
+            updateVal('temp', temp.value);
+            updateVal('topk', topk.value);
+            updateVal('topp', topp.value);
+        }
+
+        async function generate() {
+            const btn = document.getElementById('generate-btn');
+            const spinner = document.getElementById('btn-spinner');
+            const btnText = document.getElementById('btn-text');
+
+            const prompt = document.getElementById('prompt-input').value;
+            const temperature = parseFloat(document.getElementById('temp-slider').value);
+            const top_k = parseInt(document.getElementById('topk-slider').value);
+            const top_p = parseFloat(document.getElementById('topp-slider').value);
+
+            btn.disabled = true;
+            spinner.style.display = 'block';
+            btnText.innerText = 'Generating...';
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, temperature, top_k, top_p })
+                });
+
+                const data = await response.json();
+
+                document.getElementById('output-level-1').innerText = data.level_1_text || '(Empty)';
+                document.getElementById('output-level-2').innerText = data.level_2_text || '(Empty)';
+                document.getElementById('output-level-3').innerText = data.level_3_text || '(Empty)';
+
+                document.getElementById('stats-bar').style.display = 'flex';
+                document.getElementById('stat-latency').innerText = (data.latency_seconds * 1000).toFixed(1) + ' ms';
+                document.getElementById('stat-throughput').innerText = (256 / data.latency_seconds).toFixed(0) + ' bytes/s';
+            } catch (err) {
+                alert('Generation request failed: ' + err);
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.innerText = 'Generate Sequence';
+            }
+        }
+    </script>
+</body>
+</html>
